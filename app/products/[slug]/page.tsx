@@ -23,7 +23,7 @@ async function getRelated(product: Product) {
   if (!product.category_id) return []
   const { data } = await supabase
     .from('products')
-    .select('*, product_images(image_url), categories(name)')
+    .select('*, product_images(image_url), product_variants(id,stock), categories(name)')
     .eq('is_active', true)
     .eq('category_id', product.category_id)
     .neq('id', product.id)
@@ -58,7 +58,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   }))
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-10">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 bg-transparent">
       <nav className="text-sm text-stone-500 mb-8">
         <Link href="/shop" className="hover:text-stone-900">Shop</Link>
         {product.categories?.name && <span> / {product.categories.name}</span>}
@@ -93,7 +93,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-4xl md:text-5xl leading-tight mb-5" style={serif}>{product.name}</h1>
           <p className="text-2xl mb-8">
             <span className="font-semibold">{formatPrice(price)}</span>
-            {onSale && compareAt && <span className="ml-3 text-lg text-stone-400 line-through">{formatPrice(compareAt)}</span>}
+            {onSale && compareAt && (
+              <>
+                <span className="ml-3 text-lg text-stone-400 line-through">{formatPrice(compareAt)}</span>
+                <span className="ml-3 align-middle bg-orange-600 text-white text-xs font-bold px-2 py-1 rounded">-{Math.round((1 - price / compareAt) * 100)}%</span>
+              </>
+            )}
           </p>
 
           <p className="text-stone-600 leading-relaxed mb-10">{product.description || 'Details coming soon.'}</p>
@@ -109,6 +114,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             options={options}
             stockLimit={typeof product.stock === 'number' ? product.stock : null}
           />
+
+          <a
+            href={`https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`Hi, I am interested in ${product.name}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 block text-center border border-emerald-600 text-emerald-700 hover:bg-emerald-50 rounded-md py-3 text-sm font-semibold transition"
+          >
+            Ask about this on WhatsApp
+          </a>
 
           <div className="mt-10 border-t border-stone-200 divide-y divide-stone-200 text-sm">
             {product.material_care && (
@@ -134,7 +148,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       {related.length > 0 && (
         <section className="pt-24">
           <h2 className="text-3xl mb-10" style={serif}>You may also like</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {related.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         </section>
