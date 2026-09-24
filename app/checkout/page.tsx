@@ -112,7 +112,7 @@ export default function CheckoutPage() {
         <p className="text-stone-600 mb-8">
           Tap below to send us the order details on WhatsApp. We will confirm and share payment details right away.
         </p>
-        <a href={done.link} target="_blank" rel="noopener noreferrer" className="inline-block bg-stone-900 hover:bg-stone-800 text-white px-8 py-3.5 text-sm font-semibold transition">
+        <a href={done.link} target="_blank" rel="noopener noreferrer" className="inline-block bg-orange-600 hover:bg-orange-700 text-white px-8 py-3.5 text-sm font-semibold transition">
           Open WhatsApp
         </a>
         <div className="mt-6">
@@ -229,7 +229,7 @@ export default function CheckoutPage() {
             <div className="flex justify-between text-base font-semibold text-stone-900 pt-2"><span>Total</span><span>{formatPrice(total)}</span></div>
           </div>
           {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
-          <button type="submit" disabled={submitting} className="w-full mt-6 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-sm font-semibold py-3.5 transition">
+          <button type="submit" disabled={submitting} className="w-full mt-6 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold py-3.5 transition">
             {submitting ? 'Placing order…' : 'Place order'}
           </button>
           <p className="text-xs text-stone-500 mt-3 text-center">Your order is saved and confirmed with you on WhatsApp.</p>
