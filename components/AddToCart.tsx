@@ -9,9 +9,10 @@ type Option = { id: string; label: string; stock: number | null }
 type Props = {
   product: { id: string; slug: string; name: string; price: number; image: string | null }
   options: Option[]
+  stockLimit?: number | null
 }
 
-export default function AddToCart({ product, options }: Props) {
+export default function AddToCart({ product, options, stockLimit = null }: Props) {
   const { add } = useCart()
   const [selected, setSelected] = useState<string>('')
   const [qty, setQty] = useState(1)
@@ -19,8 +20,11 @@ export default function AddToCart({ product, options }: Props) {
   const [error, setError] = useState('')
 
   const chosen = options.find((o) => o.id === selected)
-  const allSoldOut = options.length > 0 && options.every((o) => o.stock !== null && o.stock <= 0)
-  const max = chosen?.stock != null ? Math.max(1, Math.min(chosen.stock, 10)) : 10
+  const allSoldOut =
+    (options.length > 0 && options.every((o) => o.stock !== null && o.stock <= 0)) ||
+    (options.length === 0 && stockLimit !== null && stockLimit <= 0)
+  const limit = chosen?.stock ?? (options.length === 0 ? stockLimit : null)
+  const max = limit != null ? Math.max(1, Math.min(limit, 10)) : 10
 
   function handleAdd() {
     if (options.length > 0 && !chosen) {
@@ -29,7 +33,7 @@ export default function AddToCart({ product, options }: Props) {
     }
     setError('')
     add(
-      { productId: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image, variant: chosen?.label },
+      { productId: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image, variant: chosen?.label, variantId: chosen?.id },
       qty
     )
     setAdded(true)
