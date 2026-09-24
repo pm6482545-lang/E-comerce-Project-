@@ -107,6 +107,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               image: images[0]?.image_url ?? null,
             }}
             options={options}
+            stockLimit={typeof product.stock === 'number' ? product.stock : null}
           />
 
           <div className="mt-10 border-t border-stone-200 divide-y divide-stone-200 text-sm">
