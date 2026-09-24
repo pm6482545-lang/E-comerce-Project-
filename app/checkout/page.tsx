@@ -23,6 +23,7 @@ export default function CheckoutPage() {
     paymentMethod: 'mpesa',
   })
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<{ ref: string; link: string } | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -32,15 +33,47 @@ export default function CheckoutPage() {
   const deliveryFee = isPickup || subtotal >= store.freeDeliveryThreshold ? 0 : store.deliveryFee
   const total = subtotal + deliveryFee
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!PHONE_RE.test(form.phone.replace(/\s/g, ''))) {
       setError('Please enter a valid Kenyan phone number, e.g. 0712345678.')
       return
     }
     setError('')
+    setSubmitting(true)
 
-    const ref = `EL-${Date.now().toString(36).toUpperCase()}`
+    let ref = `EL-${Date.now().toString(36).toUpperCase()}`
+    let fee = deliveryFee
+    let grand = total
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.fullName,
+          phone: form.phone,
+          email: form.email,
+          delivery: form.delivery,
+          address: form.address,
+          city: form.city,
+          notes: form.notes,
+          payment: form.paymentMethod,
+          items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.quantity })),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Could not place your order. Please try again.')
+        setSubmitting(false)
+        return
+      }
+      ref = data.ref
+      fee = data.deliveryFee
+      grand = data.total
+    } catch {
+      // network problem: still let the customer send the order on WhatsApp
+    }
+
     const lines = items.map(
       (i) => `• ${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity} - ${formatPrice(i.price * i.quantity)}`
     )
@@ -50,8 +83,8 @@ export default function CheckoutPage() {
       ...lines,
       '',
       `Subtotal: ${formatPrice(subtotal)}`,
-      `Delivery: ${deliveryFee === 0 ? 'Free' : formatPrice(deliveryFee)}`,
-      `Total: ${formatPrice(total)}`,
+      `Delivery: ${fee === 0 ? 'Free' : formatPrice(fee)}`,
+      `Total: ${formatPrice(grand)}`,
       '',
       `Name: ${form.fullName}`,
       `Phone: ${form.phone}`,
@@ -64,8 +97,8 @@ export default function CheckoutPage() {
       .join('\n')
 
     const link = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(message)}`
-    window.open(link, '_blank', 'noopener,noreferrer')
     clear()
+    setSubmitting(false)
     setDone({ ref, link })
   }
 
@@ -75,9 +108,9 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-xl mx-auto px-6 pt-24 text-center">
         <h1 className="text-4xl mb-4" style={serif}>Thank you</h1>
-        <p className="text-stone-600 mb-2">Your order request <strong>{done.ref}</strong> is ready to send.</p>
+        <p className="text-stone-600 mb-2">Your order <strong>{done.ref}</strong> has been received.</p>
         <p className="text-stone-600 mb-8">
-          Send the pre-filled WhatsApp message and we will confirm your order and payment details right away.
+          Tap below to send us the order details on WhatsApp. We will confirm and share payment details right away.
         </p>
         <a href={done.link} target="_blank" rel="noopener noreferrer" className="inline-block bg-stone-900 hover:bg-stone-800 text-white px-8 py-3.5 text-sm font-semibold transition">
           Open WhatsApp
@@ -196,10 +229,10 @@ export default function CheckoutPage() {
             <div className="flex justify-between text-base font-semibold text-stone-900 pt-2"><span>Total</span><span>{formatPrice(total)}</span></div>
           </div>
           {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
-          <button type="submit" className="w-full mt-6 bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold py-3.5 transition">
-            Place order
+          <button type="submit" disabled={submitting} className="w-full mt-6 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-sm font-semibold py-3.5 transition">
+            {submitting ? 'Placing order…' : 'Place order'}
           </button>
-          <p className="text-xs text-stone-500 mt-3 text-center">Your order is sent to us on WhatsApp for confirmation.</p>
+          <p className="text-xs text-stone-500 mt-3 text-center">Your order is saved and confirmed with you on WhatsApp.</p>
         </aside>
       </form>
     </div>
