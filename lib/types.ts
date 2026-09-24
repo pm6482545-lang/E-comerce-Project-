@@ -19,6 +19,10 @@ export type Product = {
   sale_price?: number | string | null
   material_care?: string | null
   category_id?: string | number | null
+  stock?: number | null
+  low_stock_threshold?: number | null
+  is_active?: boolean
+  is_featured?: boolean
   created_at?: string | null
   product_images?: ProductImage[] | null
   product_variants?: Variant[] | null
