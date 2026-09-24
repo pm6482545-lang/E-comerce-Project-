@@ -11,3 +11,7 @@ export function getPricing(p: { price: number | string; sale_price?: number | st
   if (sale > 0 && sale < price) return { price: sale, compareAt: price, onSale: true }
   return { price, compareAt: null as number | null, onSale: false }
 }
+
+export function slugify(s: string) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
