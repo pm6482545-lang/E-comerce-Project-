@@ -80,7 +80,7 @@ export default function AddToCart({ product, options, stockLimit = null }: Props
           type="button"
           onClick={handleAdd}
           disabled={allSoldOut}
-          className="flex-1 h-12 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-300 text-white text-sm font-semibold tracking-wide transition"
+          className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-stone-300 text-white text-sm font-semibold tracking-wide transition"
         >
           {allSoldOut ? 'Sold out' : 'Add to cart'}
         </button>
