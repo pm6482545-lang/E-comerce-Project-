@@ -6,7 +6,10 @@ import type { Product } from '@/lib/types'
 export const dynamic = 'force-dynamic'
 
 type Img = { id: string; image_url: string; sort_order: number | null }
-type Full = Product & { product_images: Img[]; product_variants: { id: string; size: string | null; color: string | null; stock: number | null }[] }
+type Full = Omit<Product, 'product_images' | 'product_variants'> & {
+  product_images: Img[]
+  product_variants: { id: string; size: string | null; color: string | null; stock: number | null }[]
+}
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
