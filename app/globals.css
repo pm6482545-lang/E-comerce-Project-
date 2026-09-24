@@ -7,6 +7,14 @@ html {
 }
 
 ::selection {
-  background: #1c1917;
+  background: #ea580c;
   color: #fff;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
