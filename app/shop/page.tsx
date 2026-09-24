@@ -2,108 +2,126 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { supabase } from '@/lib/supabaseClient'
 import ProductCard from '@/components/ProductCard'
-import { serif } from '@/lib/config'
 import { getPricing } from '@/lib/format'
 import type { Product } from '@/lib/types'
 
 export const revalidate = 60
 export const metadata: Metadata = { title: 'Shop' }
 
-type SearchParams = { q?: string; category?: string; sort?: string }
+type SP = { q?: string; category?: string; sort?: string; min?: string; max?: string; deals?: string }
 
 async function getProducts() {
   const { data } = await supabase
     .from('products')
-    .select('*, product_images(image_url), categories(name)')
+    .select('*, product_images(image_url), product_variants(id,stock), categories(name)')
     .eq('is_active', true)
   return (data ?? []) as Product[]
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { q = '', category = '', sort = 'newest' } = await searchParams
+export default async function ShopPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams
+  const { q = '', category = '', sort = 'newest', min = '', max = '', deals = '' } = sp
   const all = await getProducts()
 
-  const categories = Array.from(
-    new Set(all.map((p) => p.categories?.name).filter((n): n is string => Boolean(n)))
-  ).sort()
+  const categories = Array.from(new Set(all.map((p) => p.categories?.name).filter((n): n is string => Boolean(n)))).sort()
 
-  let products = all
-  if (category) products = products.filter((p) => p.categories?.name === category)
-  if (q) {
-    const term = q.toLowerCase()
-    products = products.filter(
-      (p) => p.name.toLowerCase().includes(term) || (p.description ?? '').toLowerCase().includes(term)
-    )
-  }
+  const minP = Number(min) || 0
+  const maxP = Number(max) || Infinity
+  let products = all.filter((p) => {
+    const price = getPricing(p).price
+    if (price < minP || price > maxP) return false
+    if (category && p.categories?.name !== category) return false
+    if (deals === '1' && !getPricing(p).onSale) return false
+    if (q) {
+      const t = q.toLowerCase()
+      if (!p.name.toLowerCase().includes(t) && !(p.description ?? '').toLowerCase().includes(t)) return false
+    }
+    return true
+  })
   products = [...products].sort((a, b) => {
     if (sort === 'price-asc') return getPricing(a).price - getPricing(b).price
     if (sort === 'price-desc') return getPricing(b).price - getPricing(a).price
     return (b.created_at ?? '').localeCompare(a.created_at ?? '')
   })
 
-  const hrefFor = (c: string) => {
+  const href = (over: Partial<SP>) => {
+    const merged: SP = { q, category, sort, min, max, deals, ...over }
     const params = new URLSearchParams()
-    if (c) params.set('category', c)
-    if (q) params.set('q', q)
-    if (sort !== 'newest') params.set('sort', sort)
+    if (merged.q) params.set('q', merged.q)
+    if (merged.category) params.set('category', merged.category)
+    if (merged.sort && merged.sort !== 'newest') params.set('sort', merged.sort)
+    if (merged.min) params.set('min', merged.min)
+    if (merged.max) params.set('max', merged.max)
+    if (merged.deals === '1') params.set('deals', '1')
     const s = params.toString()
     return s ? `/shop?${s}` : '/shop'
   }
 
-  const chip = (active: boolean) =>
-    `px-4 py-2 text-sm border transition ${
-      active ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-300 text-stone-700 hover:border-stone-900'
-    }`
+  const linkCls = (active: boolean) => `block py-1.5 text-sm ${active ? 'font-semibold text-orange-600' : 'text-stone-700 hover:text-orange-600'}`
+  const inputCls = 'w-full border border-stone-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-orange-600'
+
+  const filters = (
+    <div className="space-y-6">
+      <div>
+        <p className="text-sm font-bold text-stone-900 mb-2">Category</p>
+        <Link href={href({ category: '' })} className={linkCls(!category)}>All products</Link>
+        {categories.map((c) => <Link key={c} href={href({ category: c })} className={linkCls(category === c)}>{c}</Link>)}
+      </div>
+      <div>
+        <p className="text-sm font-bold text-stone-900 mb-2">Offers</p>
+        <Link href={href({ deals: deals === '1' ? '' : '1' })} className={linkCls(deals === '1')}>{deals === '1' ? '✓ ' : ''}Hot deals only</Link>
+      </div>
+      <form action="/shop" method="get">
+        <p className="text-sm font-bold text-stone-900 mb-2">Price (KES)</p>
+        {q && <input type="hidden" name="q" value={q} />}
+        {category && <input type="hidden" name="category" value={category} />}
+        {sort !== 'newest' && <input type="hidden" name="sort" value={sort} />}
+        {deals === '1' && <input type="hidden" name="deals" value="1" />}
+        <div className="flex gap-2 mb-2">
+          <input name="min" defaultValue={min} inputMode="numeric" placeholder="Min" className={inputCls} />
+          <input name="max" defaultValue={max} inputMode="numeric" placeholder="Max" className={inputCls} />
+        </div>
+        <button className="w-full bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-md py-2 transition">Apply</button>
+      </form>
+    </div>
+  )
+
+  const sortCls = (active: boolean) => `px-3 py-1.5 text-xs rounded-full border whitespace-nowrap ${active ? 'bg-stone-900 text-white border-stone-900' : 'bg-white border-stone-300 text-stone-700'}`
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-14">
-      <div className="mb-10">
-        <h1 className="text-4xl md:text-5xl mb-2" style={serif}>Shop</h1>
-        <p className="text-stone-500">{products.length} {products.length === 1 ? 'piece' : 'pieces'}</p>
+    <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6">
+      <div className="mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold">{category || (deals === '1' ? 'Hot deals' : q ? `Results for "${q}"` : 'All products')}</h1>
+        <p className="text-sm text-stone-500 mt-1">{products.length} {products.length === 1 ? 'item' : 'items'}</p>
       </div>
 
-      <form action="/shop" method="get" className="flex flex-col md:flex-row gap-3 mb-6">
-        {category && <input type="hidden" name="category" value={category} />}
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Search products"
-          className="flex-1 border border-stone-300 bg-white px-4 py-3 text-sm focus:outline-none focus:border-stone-900"
-        />
-        <select
-          name="sort"
-          defaultValue={sort}
-          className="border border-stone-300 bg-white px-4 py-3 text-sm focus:outline-none focus:border-stone-900"
-        >
-          <option value="newest">Newest</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-        </select>
-        <button type="submit" className="bg-stone-900 hover:bg-stone-800 text-white px-6 py-3 text-sm font-semibold transition">
-          Apply
-        </button>
-      </form>
+      <div className="lg:grid lg:grid-cols-[230px_1fr] gap-8 items-start">
+        <aside className="hidden lg:block bg-white border border-stone-200 rounded-lg p-5 sticky top-40">{filters}</aside>
 
-      {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-12">
-          <Link href={hrefFor('')} className={chip(!category)}>All</Link>
-          {categories.map((c) => (
-            <Link key={c} href={hrefFor(c)} className={chip(category === c)}>{c}</Link>
-          ))}
-        </div>
-      )}
+        <div>
+          <details className="lg:hidden bg-white border border-stone-200 rounded-lg mb-4">
+            <summary className="px-4 py-3 text-sm font-semibold cursor-pointer">Filters</summary>
+            <div className="px-4 pb-4">{filters}</div>
+          </details>
 
-      {products.length === 0 ? (
-        <div className="text-center py-24 text-stone-500">
-          <p className="mb-4">No products match your search.</p>
-          <Link href="/shop" className="underline underline-offset-4 text-stone-900">Clear filters</Link>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+            <Link href={href({ sort: 'newest' })} className={sortCls(sort === 'newest')}>Newest</Link>
+            <Link href={href({ sort: 'price-asc' })} className={sortCls(sort === 'price-asc')}>Price: low to high</Link>
+            <Link href={href({ sort: 'price-desc' })} className={sortCls(sort === 'price-desc')}>Price: high to low</Link>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="bg-white border border-stone-200 rounded-lg text-center py-20 text-stone-500">
+              <p className="mb-4">No products match your filters.</p>
+              <Link href="/shop" className="text-orange-600 font-semibold">Clear filters</Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+              {products.map((p) => <ProductCard key={p.id} product={p} />)}
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
-          {products.map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
