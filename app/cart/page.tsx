@@ -20,7 +20,7 @@ export default function CartPage() {
       {items.length === 0 ? (
         <div className="bg-white border border-stone-200 py-20 text-center">
           <p className="text-stone-500 mb-6">Your cart is empty.</p>
-          <Link href="/shop" className="inline-block bg-stone-900 hover:bg-stone-800 text-white px-8 py-3.5 text-sm font-semibold transition">
+          <Link href="/shop" className="inline-block bg-orange-600 hover:bg-orange-700 text-white px-8 py-3.5 text-sm font-semibold transition">
             Continue shopping
           </Link>
         </div>
@@ -75,7 +75,7 @@ export default function CartPage() {
             </div>
             <Link
               href="/checkout"
-              className="block text-center bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold py-3.5 transition"
+              className="block text-center bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold py-3.5 transition"
             >
               Proceed to checkout
             </Link>
